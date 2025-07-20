@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         "suresteps.session.token": token,
       },
-      body: requestBody,
+      body: JSON.stringify(requestBody),
     });
 
     console.log("Old API response status:", response.status);
