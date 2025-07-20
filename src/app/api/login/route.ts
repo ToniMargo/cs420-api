@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const data = await req.json();
-  //const token = req.headers.get('suresteps.session.token');
+
   if (!data.userName || !data.password) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
-  // fetch stedi.app.
+
   try {
     const response = await fetch("https://dev.stedi.me/login", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/text", // required by STEDI
       },
       body: JSON.stringify({
         userName: data.userName,
@@ -19,15 +19,21 @@ export async function POST(req: NextRequest) {
       }),
     });
 
+    const sessionToken = await response.text();
+
     if (!response.ok) {
-      const errorText = await response.text();
       return NextResponse.json(
-        { error: "Login failed", details: errorText },
+        { error: "Login failed", details: sessionToken },
         { status: response.status }
       );
     }
-    const sessionToken = await response.text();
-    return new NextResponse(sessionToken, { status: 200 });
+
+    return new NextResponse(sessionToken, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/text", // required for the test to parse the token
+      },
+    });
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(

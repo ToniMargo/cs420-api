@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Simple in-memory store (optional for local tracking)
-type Customer = {
-  customerName: string;
-  email: string;
-  region: string;
-  phone: string;
-  whatsAppPhone: string;
-  birthDate: string;
-};
-
-const customers = new Map<string, Customer>();
-
 export async function POST(req: NextRequest) {
   const headers = req.headers;
   const token =
     headers.get("suresteps.session.token") ||
     headers.get("suresteps-session-token");
+
+  console.log("🔑 Incoming token:", token);
 
   if (!token) {
     return NextResponse.json(
@@ -46,7 +36,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Use the required format for legacy STEDI API
   const payload = {
     customerName: data.customerName,
     email: data.email,
@@ -57,7 +46,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const response = await fetch("https://dev.stedi.me/customer", {
+    const legacyResponse = await fetch("https://dev.stedi.me/customer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,31 +55,25 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
-    const raw = await response.text();
+    const raw = await legacyResponse.text();
 
-    if (response.status === 409) {
-      return NextResponse.json(
-        { message: "Customer already exists", raw },
-        { status: 409 }
-      );
+    console.log("📨 STEDI response code:", legacyResponse.status);
+    console.log("📦 STEDI raw body:", raw);
+
+    if (legacyResponse.status === 409) {
+      return NextResponse.json({ message: "Already exists" }, { status: 409 });
     }
 
-    if (!response.ok) {
+    if (!legacyResponse.ok) {
       return NextResponse.json(
         { error: "Legacy API failed", raw },
-        { status: response.status }
+        { status: legacyResponse.status }
       );
     }
 
-    // Track in local memory (optional)
-    customers.set(data.email, payload);
-
     return NextResponse.json({ message: "Customer created" }, { status: 200 });
-  } catch (error: unknown) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    console.error("🔥 Error contacting STEDI:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
