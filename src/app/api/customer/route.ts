@@ -11,15 +11,17 @@ export async function POST(req: NextRequest) {
   }
 
   const data = await req.json();
-  const { customerName, email, region, phone, whatsAppPhone, birthDay } = data;
+
+  // Handle birthDay vs birthDate
+  const birthDate = data.birthDate || data.birthDay;
 
   const requiredFields = {
-    customerName,
-    email,
-    region,
-    phone,
-    whatsAppPhone,
-    birthDay,
+    customerName: data.customerName,
+    email: data.email,
+    region: data.region,
+    phone: data.phone,
+    whatsAppPhone: data.whatsAppPhone,
+    birthDate,
   };
 
   for (const [key, value] of Object.entries(requiredFields)) {
@@ -31,19 +33,33 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Prepare payload for legacy API
+  const payload = {
+    customerName: data.customerName,
+    email: data.email,
+    region: data.region,
+    phone: data.phone,
+    whatsAppPhone: data.whatsAppPhone,
+    birthDate, // renamed key
+  };
+
   try {
     const response = await fetch("https://dev.stedi.me/customer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "suresteps-session-token": token,
+        "suresteps.session.token": token,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     const raw = await response.text();
-    console.log("📥 Response status:", response.status);
-    console.log("📦 Raw response:", raw);
+
+    console.log("📥 Legacy API response status:", response.status);
+    console.log("📥 Legacy API response headers:", [
+      ...response.headers.entries(),
+    ]);
+    console.log("📦 Legacy API raw body:", raw);
 
     if (!response.ok) {
       return NextResponse.json(

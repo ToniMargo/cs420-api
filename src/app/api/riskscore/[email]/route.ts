@@ -28,7 +28,7 @@ export async function GET(
       method: "GET",
       headers: {
         Accept: "application/json",
-        "suresteps-session-token": token,
+        "suresteps.session.token": token,
       },
     });
 
