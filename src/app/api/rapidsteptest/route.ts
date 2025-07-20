@@ -82,10 +82,10 @@ export async function POST(req: NextRequest) {
     const response = await fetch("https://dev.stedi.me/rapidsteptest", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        Accept: "application/json",
         "suresteps.session.token": token,
       },
-      body: JSON.stringify(requestBody),
+      body: requestBody,
     });
 
     console.log("Old API response status:", response.status);
