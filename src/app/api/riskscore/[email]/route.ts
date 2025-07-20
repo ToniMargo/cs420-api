@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ email: string }> }
+  { params }: { params: { email: string } }
 ) {
+  //{ params }: { params: Promise<{ email: string }> }
   console.log("GET request received for risk score");
 
   const { email } = await params;
