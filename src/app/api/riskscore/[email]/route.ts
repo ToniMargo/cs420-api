@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { email: string } }
-) {
   //{ params }: { params: Promise<{ email: string }> }
-  console.log("GET request received for risk score");
-
-  const { email } = await params;
+  context: { params: { email: string } }
+) {
+  //const { email } = await params;
+  const email = context.params.email;
   console.log("Email parameter:", email);
   const token = request.headers.get("suresteps-session-token");
 
