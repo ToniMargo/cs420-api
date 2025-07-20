@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   console.log("POST request received for rapid step test");
-  const token = req.headers.get("suresteps.session.token");
+  const token =
+    req.headers.get("suresteps.session.token") ||
+    req.headers.get("suresteps-session-token"); // fallback just in case
+
   console.log("Session token:", token);
 
   if (!token) {
