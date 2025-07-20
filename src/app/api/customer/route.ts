@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const headers = req.headers;
+  // Accept header: suresteps.session.token (with dot, not hyphen)
   const token =
-    headers.get("suresteps.session.token") ||
-    headers.get("suresteps-session-token");
-
-  console.log("🔑 Incoming token:", token);
+    req.headers.get("suresteps.session.token") ||
+    req.headers.get("suresteps-session-token"); // fallback just in case
 
   if (!token) {
     return NextResponse.json(
@@ -46,34 +44,43 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const legacyResponse = await fetch("https://dev.stedi.me/customer", {
+    const stediResponse = await fetch("https://dev.stedi.me/customer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "suresteps.session.token": token,
+        "suresteps.session.token": token, // must match test format exactly
       },
       body: JSON.stringify(payload),
     });
 
-    const raw = await legacyResponse.text();
+    const raw = await stediResponse.text();
 
-    console.log("📨 STEDI response code:", legacyResponse.status);
-    console.log("📦 STEDI raw body:", raw);
-
-    if (legacyResponse.status === 409) {
-      return NextResponse.json({ message: "Already exists" }, { status: 409 });
-    }
-
-    if (!legacyResponse.ok) {
+    // If already exists, test accepts 409
+    if (stediResponse.status === 409) {
       return NextResponse.json(
-        { error: "Legacy API failed", raw },
-        { status: legacyResponse.status }
+        { message: "Customer already exists" },
+        { status: 409 }
       );
     }
 
-    return NextResponse.json({ message: "Customer created" }, { status: 200 });
-  } catch (err: unknown) {
-    console.error("🔥 Error contacting STEDI:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    // If success, test expects 200
+    if (stediResponse.ok) {
+      return NextResponse.json(
+        { message: "Customer created" },
+        { status: 200 }
+      );
+    }
+
+    // Any other failure from STEDI
+    return NextResponse.json(
+      { error: "Failed to create customer", details: raw },
+      { status: stediResponse.status }
+    );
+  } catch (error: unknown) {
+    console.error("Customer creation error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
