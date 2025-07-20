@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   // Accept header: suresteps.session.token (with dot, not hyphen)
-  const token =
-    req.headers.get("suresteps.session.token") ||
-    req.headers.get("suresteps-session-token"); // fallback just in case
+  const token = req.headers.get("suresteps.session.token"); // fallback just in case
 
   if (!token) {
     return NextResponse.json(
