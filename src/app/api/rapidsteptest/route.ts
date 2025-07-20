@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     req.headers.get("suresteps.session.token") ||
     req.headers.get("suresteps-session-token"); // fallback just in case
 
-  console.log("Session tokenz:", token);
+  console.log("Session token:", token);
 
   if (!token) {
     return NextResponse.json(
