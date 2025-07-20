@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const token = req.headers.get("suresteps.session.token");
+  const token = req.headers.get("suresteps-session-token");
 
   if (!token) {
     return NextResponse.json(
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "suresteps.session.token": token,
+        "suresteps-session-token": token,
       },
       body: JSON.stringify(data),
     });

@@ -6,7 +6,7 @@ export async function GET(
 ) {
   const { email } = await params;
   console.log("Email parameter:", email);
-  const token = request.headers.get("suresteps.session.token");
+  const token = request.headers.get("suresteps-session-token");
 
   console.log("Session token:", token);
 
@@ -28,7 +28,7 @@ export async function GET(
       method: "GET",
       headers: {
         Accept: "application/json",
-        "suresteps.session.token": token,
+        "suresteps-session-token": token,
       },
     });
 
