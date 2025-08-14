@@ -4,7 +4,6 @@ import { consentStore, getSessionToken } from "@/lib/consentStore";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Params = { params: { customer: string } };
 type AsyncParams = { params: Promise<{ customer: string }> };
 export async function GET(req: NextRequest, { params }: AsyncParams) {
   const token = getSessionToken(req.headers);
@@ -25,7 +24,7 @@ export async function GET(req: NextRequest, { params }: AsyncParams) {
   });
 }
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, { params }: AsyncParams) {
   const token = getSessionToken(req.headers);
   if (!token)
     return NextResponse.json(
@@ -33,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       { status: 401 }
     );
 
-  const { customer } = params;
+  const { customer } = await params;
   if (!customer)
     return NextResponse.json({ error: "Missing customer" }, { status: 400 });
 
