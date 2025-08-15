@@ -27,7 +27,17 @@ export async function POST(req: NextRequest) {
       );
     }
     const sessionToken = await response.text();
-    return new NextResponse(sessionToken, { status: 200 });
+    // after you generate `token`
+    return NextResponse.json(
+      { ok: true },
+      {
+        status: 200,
+        headers: {
+          "suresteps.session.token": sessionToken, // for local/tests
+          "suresteps-session-token": sessionToken, // for Vercel-safe passthrough
+        },
+      }
+    );
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
