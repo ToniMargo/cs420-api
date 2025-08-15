@@ -1,67 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  clinicianStore,
-  ClinicianGrant,
-  getSessionToken,
-  oneYearFromNowISO,
-} from "@/lib/consentStore";
+import { prisma } from "@/lib/prisma";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ customer: string }> }
+) {
+  //console.log('GET request received for consent');
+  const { customer } = await params;
+  console.log("Customer parameter:", customer);
+  const token = request.headers.get("suresteps-session-token");
+  console.log("Session token:", token);
 
-type Params = { params: { customer: string } };
-const simpleEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export async function GET(req: NextRequest, { params }: Params) {
-  const token = getSessionToken(req.headers);
-  if (!token)
-    return NextResponse.json(
-      { error: "Missing session token" },
-      { status: 401 }
-    );
-
-  const { customer } = params;
-  if (!customer)
-    return NextResponse.json({ error: "Missing customer" }, { status: 400 });
-
-  const grants = clinicianStore.get(customer) ?? [];
-  const payload: [string, string][] = grants.map((g) => [g.email, g.expiresAt]);
-  return NextResponse.json(payload, { status: 200 });
-}
-
-export async function PATCH(req: NextRequest, { params }: Params) {
-  const token = getSessionToken(req.headers);
-  if (!token)
-    return NextResponse.json(
-      { error: "Missing session token" },
-      { status: 401 }
-    );
-
-  const { customer } = params;
-  if (!customer)
-    return NextResponse.json({ error: "Missing customer" }, { status: 400 });
-
-  const email = (await req.text()).trim();
-  if (!email || !simpleEmail.test(email)) {
-    return NextResponse.json(
-      { error: "Body must be a valid clinician email as plain text" },
-      { status: 400 }
-    );
+  if (!token) {
+    return new NextResponse("Missing session token", { status: 401 });
   }
 
-  const current = clinicianStore.get(customer) ?? [];
-  const expiresAt = oneYearFromNowISO();
+  if (!customer) {
+    return new NextResponse("Customer parameter is required", { status: 400 });
+  }
 
-  const idx = current.findIndex(
-    (c) => c.email.toLowerCase() === email.toLowerCase()
+  const bodyText = await request.json();
+  //const consentGiven = bodyText.trim().toLowerCase() === 'true';
+  const consentGiven = Boolean(bodyText.consent);
+
+  const result = await prisma.consent.upsert({
+    where: { customer },
+    update: { consent: consentGiven },
+    create: { customer, consent: consentGiven },
+  });
+  console.log("Inserted/Updated Consent Record:", result);
+
+  // TODO: Update consent in your database or service here
+  console.log(
+    `Updating consent for ${customer}: ${consentGiven} (Token: ${token})`
   );
-  if (idx >= 0)
-    current[idx] = { email: current[idx].email, expiresAt } as ClinicianGrant;
-  else current.push({ email, expiresAt });
+  console.log(Object.keys(prisma));
 
-  clinicianStore.set(customer, current);
+  return NextResponse.json(
+    { message: "Consent updated successfully." },
+    { status: 200 }
+  );
+}
 
-  return new NextResponse("Clinician consent updated successfully.", {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ customer: string }> }
+) {
+  const { customer } = await params;
+  const token = request.headers.get("suresteps-session-token");
+
+  if (!token) {
+    return new NextResponse("Missing session token", { status: 401 });
+  }
+
+  const record = await prisma.consent.findUnique({
+    where: { customer },
+  });
+
+  return new NextResponse(String(record?.consent ?? false), {
     status: 200,
     headers: { "Content-Type": "text/plain" },
   });
