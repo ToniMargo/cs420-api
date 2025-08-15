@@ -10,9 +10,9 @@ function oneYearFromNowISO() {
 
 export async function PATCH(
   req: Request,
-  context: { params: { customer: string } }
+  { params }: { params: Promise<{ customer: string }> }
 ) {
-  const { customer } = context.params as { customer: string };
+  const { customer } = await params;
 
   const token = readSessionToken(req.headers);
   if (!token)
@@ -33,9 +33,9 @@ export async function PATCH(
 
 export async function GET(
   req: Request,
-  context: { params: { customer: string } }
+  { params }: { params: Promise<{ customer: string }> }
 ) {
-  const { customer } = context.params as { customer: string };
+  const { customer } = await params;
 
   const token = readSessionToken(req.headers);
   if (!token)
