@@ -1,27 +1,52 @@
-import { NextResponse } from "next/server";
-import { readSessionToken } from "@/app/lib/headers";
-import { riskScore, getOrCreateUser, userByToken } from "@/app/lib/store";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  _req: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ email: string }> }
 ) {
   const { email } = await params;
+  console.log("Email parameter:", email);
+  const token = request.headers.get("suresteps-session-token");
 
-  // Require a valid token
-  // (if tests only check presence, this still works since login sets it)
-  // but tying it to a real user helps avoid surprises.
-  // We don't enforce that token matches this email for the course tests.
-  // Just ensure it exists.
-  // If you want stricter: ensure userByToken(token)?.email === email.
-  const tokenUser = userByToken(
-    _req.headers.get("suresteps.session.token") ||
-      _req.headers.get("suresteps-session-token")
-  );
-  if (!tokenUser) return new NextResponse("Unauthorized", { status: 401 });
+  console.log("Session token:", token);
 
-  // Make sure the user exists in the store
-  getOrCreateUser(email);
+  if (!token) {
+    return NextResponse.json(
+      { error: "Missing session token" },
+      { status: 401 }
+    );
+  }
 
-  return NextResponse.json({ score: riskScore(email) }, { status: 200 });
+  if (!email) {
+    return NextResponse.json(
+      { error: "Missing email parameter" },
+      { status: 400 }
+    );
+  }
+  try {
+    const response = await fetch(`https://dev.stedi.me/riskscore/${email}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "suresteps.session.token": token,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return NextResponse.json(
+        { error: "Failed to retrieve risk score", details: errorData },
+        { status: response.status }
+      );
+    }
+
+    const riskScore = await response.text(); // returns a number string like "57"
+    return NextResponse.json({ score: Number(riskScore) }, { status: 200 });
+  } catch (error) {
+    console.error("Risk score fetch error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

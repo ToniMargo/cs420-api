@@ -1,20 +1,38 @@
-import { NextResponse } from "next/server";
-import { authenticate } from "@/app/lib/store";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
-  const { email, password } = await req.json();
-  const token = authenticate(email, password);
-  if (!token) return new NextResponse("Unauthorized", { status: 401 });
-
-  // Set BOTH header names (tests read dotted; Vercel sometimes rewrites)
-  return NextResponse.json(
-    { ok: true },
-    {
-      status: 200,
+export async function POST(req: NextRequest) {
+  const data = await req.json();
+  //const token = req.headers.get('suresteps.session.token');
+  if (!data.userName || !data.password) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+  // fetch stedi.app.
+  try {
+    const response = await fetch("https://dev.stedi.me/login", {
+      method: "POST",
       headers: {
-        "suresteps.session.token": token,
-        "suresteps-session-token": token,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        userName: data.userName,
+        password: data.password,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return NextResponse.json(
+        { error: "Login failed", details: errorText },
+        { status: response.status }
+      );
     }
-  );
+    const sessionToken = await response.text();
+    return new NextResponse(sessionToken, { status: 200 });
+  } catch (error) {
+    console.error("Login error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
