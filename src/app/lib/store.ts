@@ -84,3 +84,86 @@ export function riskScore(email: string): number {
   const total = u.stepData.reduce((s, d) => s + (d.steps || 0), 0);
   return Math.max(1, Math.round(total / 1000) || 1); // > 0 to satisfy test
 }
+
+// --- Clinician Access Request store (in-memory) ---
+
+export type ClinicianAccessStatus = "pending" | "approved" | "denied";
+
+export type ClinicianAccessRequest = {
+  clinicianUsername: string; // normalized lowercase
+  customerEmail: string; // normalized lowercase
+  requestDateISO: string; // ISO timestamp
+  status: ClinicianAccessStatus;
+};
+
+// Simple in-memory store.
+// If you’re persisting with Prisma later, you can swap these with DB calls.
+const _clinicianAccessRequests: ClinicianAccessRequest[] = [];
+
+/**
+ * Create a pending access request. Idempotent by (clinicianUsername, customerEmail, status==='pending').
+ */
+export function createClinicianAccessRequest(
+  clinicianUsername: string,
+  customerEmail: string
+): void {
+  const c = clinicianUsername.toLowerCase();
+  const u = customerEmail.toLowerCase();
+
+  const exists = _clinicianAccessRequests.find(
+    (r) =>
+      r.clinicianUsername === c &&
+      r.customerEmail === u &&
+      r.status === "pending"
+  );
+  if (exists) return; // idempotent create for "pending" requests
+
+  _clinicianAccessRequests.push({
+    clinicianUsername: c,
+    customerEmail: u,
+    requestDateISO: new Date().toISOString(),
+    status: "pending",
+  });
+}
+
+/**
+ * List all (pending + historical) requests for a given user/customer.
+ */
+export function getClinicianAccessRequestsForCustomer(
+  customerEmail: string
+): ClinicianAccessRequest[] {
+  const u = customerEmail.toLowerCase();
+  // Return newest first for convenience
+  return _clinicianAccessRequests
+    .filter((r) => r.customerEmail === u)
+    .sort((a, b) => b.requestDateISO.localeCompare(a.requestDateISO));
+}
+
+/**
+ * Delete any pending request matching clinician+customer.
+ * Returns number removed.
+ */
+export function deleteClinicianAccessRequest(
+  clinicianUsername: string,
+  customerEmail: string
+): number {
+  const c = clinicianUsername.toLowerCase();
+  const u = customerEmail.toLowerCase();
+
+  let removed = 0;
+  for (let i = _clinicianAccessRequests.length - 1; i >= 0; i--) {
+    const r = _clinicianAccessRequests[i];
+    if (
+      r.clinicianUsername === c &&
+      r.customerEmail === u &&
+      r.status === "pending"
+    ) {
+      _clinicianAccessRequests.splice(i, 1);
+      removed++;
+    }
+  }
+  return removed;
+}
+
+// (Optional) If you later add an approval flow, you might export:
+// export function setClinicianAccessRequestStatus(cu: string, ue: string, status: ClinicianAccessStatus) { ... }
